@@ -68,9 +68,13 @@ while true; do
   echo -e "\t\tHostName localhost"
   echo -e "\t\tStrictHostKeyChecking no"
   echo -e "\t\tPort 10022"
+  echo -e "\t\tRequestTTY force"
+  echo -e "\t\tRemoteCommand /bin/bash"
   echo -e "\nThen run:\n"
   echo -e "\tssh $user@reverse\n"
   echo -e "\nTo stop this, from the reverse shell:\n"
+  echo -e "\trssh-stop\n"
+  echo -e "or:\n"
   echo -e "\ttouch $continue_file\n"
 
   sleep 20

@@ -1,0 +1,61 @@
+name: 'GitHub Actions Shell'
+description: 'Open a reverse ssh connection from a GitHub Action.'
+inputs:
+  rssh_use_env:
+    description: 'Whether to use the env or separate variables. True by default.'
+    required: false
+    default: true
+  rssh_env:
+    description: 'The environment needed by the script.'
+    required: false
+    default: ''
+  rssh_ssh_key:
+    description: 'A private ssh key authorized on the relay server.'
+    required: false
+    default: ''
+  rssh_relay_host:
+    description: 'The relay ip / domain name.'
+    required: false
+    default: ''
+  rssh_relay_user:
+    description: 'The relay server user.'
+    required: false
+    default: ''
+  rssh_relay_key:
+    description: 'A relay host public key (the first from `ssh-keyscan $rssh_relay_host`)'
+    required: false
+    default: ''
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Add the rssh-stop function to bash.
+      run: |
+        echo "source ${{ github.action_path }}/rssh-stop" >> ~/.bashrc
+      shell: bash          
+
+    - name: Create the .env file.
+      run: |
+        env_file=${{ github.action_path }}/.env
+        if ${{ inputs.rssh_use_env }}; then
+          cat >>$env_file <<END
+        ${{ inputs.rssh_env }}
+        END
+        else
+          cat >>$env_file <<END
+        SSH_KEY="${{ inputs.rssh_ssh_key }}"
+        SSH_RELAY_HOST="${{ inputs.rssh_relay_host }}"
+        SSH_RELAY_USER="${{ inputs.rssh_relay_user }}"
+        SSH_RELAY_KEY="${{ inputs.rssh_relay_key }}"
+        END
+        fi
+      shell: bash
+
+    - name: Compile and launch the script.
+      run: |
+        cd ${{ github.action_path }}
+        ./compile.sh -o > compiled.sh
+        chmod +x compiled.sh
+        ./compiled.sh
+      shell: bash

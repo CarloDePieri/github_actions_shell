@@ -15,7 +15,7 @@ Checkout this repo with `git clone https://github.com/CarloDePieri/github_action
 Now create a file `.env` using as template the [env.template](./env.template):
 
 - `SSH_KEY`: The `github_action` private key;
-- `SSH_RELAY_HOST`: The relay host PUBLIC ip / ns;
+- `SSH_RELAY_HOST`: The relay host PUBLIC ip / domain name;
 - `SSH_RELAY_USER`: The user on the relay host;
 - `SSH_RELAY_KEY`: A relay host public key (the first from `ssh-keyscan $SSH_RELAY_HOST`).
 
@@ -48,7 +48,7 @@ Create some github action secrets:
 
 - `RSSH_SCRIPT`: the content of [script.sh](./script.sh);
 - `SSH_KEY`: The `github_action` private key;
-- `SSH_RELAY_HOST`: The relay host PUBLIC ip / ns;
+- `SSH_RELAY_HOST`: The relay host PUBLIC ip / domain name;
 - `SSH_RELAY_USER`: The user on the relay host;
 - `SSH_RELAY_KEY`: A relay host public key (the first from `ssh-keyscan $SSH_RELAY_HOST`).
 
