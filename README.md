@@ -18,6 +18,9 @@ fill in the values:
 - `SSH_RELAY_USER`: The user on the relay host;
 - `SSH_RELAY_KEY`: A relay host public key (the first from `ssh-keyscan $SSH_RELAY_HOST`).
 
+Hint: this completed value can be stored to quickly reuse this setup with
+different projects.
+
 Finally, add to the workflow file:
 
 ```yaml
@@ -25,6 +28,8 @@ Finally, add to the workflow file:
   uses: CarloDePieri/github_actions_shell@v1
   with:
     rssh_env: ${{ secrets.RSSH_ENV }}
+    # optionally:
+    rssh_relay_port: 10022
 ```
 
 ### Alternative setup
@@ -50,6 +55,8 @@ Then, in the action file:
     rssh_relay_host: ${{ secrets.RSSH_RELAY_HOST }}
     rssh_relay_user: ${{ secrets.RSSH_RELAY_USER }}
     rssh_relay_key: ${{ secrets.RSSH_RELAY_KEY }}
+    # optionally:
+    rssh_relay_port: 10022
 ```
 
 ## USAGE
@@ -59,36 +66,27 @@ to add something like this to `.ssh/config` on the relay server:
 
 ```config
 Host reverse
-    HostName localhost
-    StrictHostKeyChecking no
-    Port 10022
-    RequestTTY force
-    RemoteCommand /bin/bash
+        HostName localhost
+        User runner
+        Port 10022
+        RequestTTY force
+        RemoteCommand /bin/bash
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+        LogLevel ERROR
 ```
 
 It will also print the command to launch on the relay server to connect, something
 like:
 
 ```shell
-ssh runner@reverse
+ssh reverse
 ```
 
 To disconnect and resume the execution of the action, in the reverse shell run:
 
 ```shell
-rssh-stop
+gh-continue
 # or:
 touch /tmp/continue
 ```
-
-## TESTING
-
-Follow the main setup instruction until compiling the `.env` file. Then run:
-
-```shell
-docker compose up
-```
-
-Finally connect to the launched container from the relay server.
-
-The docker container is based on the image from [act](https://github.com/nektos/act).
