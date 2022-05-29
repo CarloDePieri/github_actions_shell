@@ -6,5 +6,5 @@ services:
     image: catthehacker/ubuntu:act-20.04
     volumes:
       - ./:/src
-    env_file: .env
-    entrypoint: /src/script.sh
+    env_file: env.full
+    entrypoint: /src/connect

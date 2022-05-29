@@ -1,10 +1,10 @@
 name: 'GitHub Actions Shell'
 description: 'Open a reverse ssh connection from a GitHub Action.'
 inputs:
-  rssh_use_env:
-    description: 'Whether to use the env or separate variables. True by default.'
+  rssh_split_env:
+    description: 'Whether to use the full env or separate variables. False by default.'
     required: false
-    default: true
+    default: false
   rssh_env:
     description: 'The environment needed by the script.'
     required: false
@@ -25,37 +25,25 @@ inputs:
     description: 'A relay host public key (the first from `ssh-keyscan $rssh_relay_host`)'
     required: false
     default: ''
+  rssh_relay_port:
+    description: 'The port used in the relay server for the ssh connection.'
+    required: false
+    default: '10022'
 
 runs:
   using: "composite"
   steps:
 
-    - name: Add the rssh-stop function to bash.
+    - name: Launch the connection script.
       run: |
-        echo "source ${{ github.action_path }}/rssh-stop" >> ~/.bashrc
-      shell: bash          
-
-    - name: Create the .env file.
-      run: |
-        env_file=${{ github.action_path }}/.env
-        if ${{ inputs.rssh_use_env }}; then
-          cat >>$env_file <<END
-        ${{ inputs.rssh_env }}
-        END
-        else
-          cat >>$env_file <<END
-        SSH_KEY="${{ inputs.rssh_ssh_key }}"
-        SSH_RELAY_HOST="${{ inputs.rssh_relay_host }}"
-        SSH_RELAY_USER="${{ inputs.rssh_relay_user }}"
-        SSH_RELAY_KEY="${{ inputs.rssh_relay_key }}"
-        END
-        fi
-      shell: bash
-
-    - name: Compile and launch the script.
-      run: |
+        echo $RSSH_RELAY_USER
         cd ${{ github.action_path }}
-        ./compile.sh -o > compiled.sh
-        chmod +x compiled.sh
-        ./compiled.sh
+        ./connect
       shell: bash
+      env:
+        RSSH_ENV: ${{ inputs.rssh_env }}
+        RSSH_SSH_KEY: ${{ inputs.rssh_ssh_key }}
+        RSSH_RELAY_HOST: ${{ inputs.rssh_relay_host }}
+        RSSH_RELAY_USER: ${{ inputs.rssh_relay_user }}
+        RSSH_RELAY_KEY: ${{ inputs.rssh_relay_key }}
+        RSSH_RELAY_PORT: ${{ inputs.rssh_relay_port }}

@@ -1,0 +1,154 @@
+#!/bin/bash
+
+# Parse the full $RSSH_ENV variable, if not empty
+if [[ "$RSSH_ENV" != "" ]];  then
+  tmpfile=$(mktemp /tmp/rssh.XXXXXX)
+  echo "$RSSH_ENV" > $tmpfile
+  source $tmpfile
+  rm $tmpfile
+fi
+
+ssh_key="$RSSH_SSH_KEY"
+ssh_relay_host="$RSSH_RELAY_HOST"
+ssh_relay_user="$RSSH_RELAY_USER"
+ssh_relay_key="$RSSH_RELAY_KEY"
+port="${RSSH_RELAY_PORT:-10022}"
+
+user=$(whoami)
+continue_file=/tmp/continue
+socket=/tmp/rssh.socket
+
+setup_ssh() {
+  mkdir -p ~/.ssh
+
+  echo -e "$ssh_key" > ~/.ssh/staging.key
+  chmod 600 ~/.ssh/staging.key
+
+  cat >>~/.ssh/config <<END
+Host staging
+    HostName $ssh_relay_host
+    User $ssh_relay_user
+    IdentityFile ~/.ssh/staging.key
+    StrictHostKeyChecking no
+END
+
+  echo "$ssh_relay_key" > ~/.ssh/authorized_keys
+  chmod 600 ~/.ssh/authorized_keys
+
+  echo "alias gh-continue='touch $continue_file; exit'" >> ~/.bashrc
+}
+
+ssh_is_not_running(){ 
+  set +e
+  out=$(/etc/init.d/ssh status | grep "is not running")
+  result=$?
+  set -e
+  return $?
+}
+
+start_sshd() {
+  # ensure the ssh server is running
+  if [[ "$(whoami)" == "root" ]]; then
+    if [[ $(command -v /etc/init.d/ssh) != "" ]] && ssh_is_not_running; then
+      msg "\nEnsure the ssh server is running..."
+      /etc/init.d/ssh start
+    else
+      msg "\nCould not find sshd controls, hoping that sshd is up and running..."
+    fi
+  else
+    msg "\nI'm not root, hoping that sshd is up and running..."
+  fi
+}
+
+start_ssh_reverse_connection() {
+  msg "\nLaunch the reverse server..."
+  ssh -M -S $socket -fN -R $port:localhost:22 -o LogLevel=ERROR staging
+}
+
+stop_ssh_reverse_connection() {
+  capture=$(ssh -S $socket -O exit "" 2>&1 >/dev/null)
+  rm -f $socket
+}
+
+connected() {
+  [[ "$(who)" != "" ]] && return 0 || return 1
+}
+
+msg() {
+  echo -e "$@"
+}
+
+err() {
+  echo -e "$@"
+  stop_ssh_reverse_connection
+  exit 1
+}
+
+setup_ssh
+start_sshd
+start_ssh_reverse_connection
+
+# Start the main loop
+COUNTER=0
+
+timeout=120
+print_every_n_seconds=30
+# timeout=15
+# print_every_n_seconds=5
+timeout_enabled=0
+step=5
+
+while true; do 
+
+  if [ -f "$continue_file" ]; then
+    msg "\n$continue_file detected, stopping script!\n"
+    stop_ssh_reverse_connection
+    exit 0
+  fi
+
+  # Print every 5 seconds for the the first 20 seconds, then once every print_every_n_seconds seconds
+  if [[ "$COUNTER" == "0" ]] || \
+    ( [[ $COUNTER -le 20 ]] && [[ "$(( COUNTER % 5 ))" == "0" ]] ) || \
+    [[ "$(( COUNTER % print_every_n_seconds ))" == "0" ]]; then
+
+    msg "\n------------------------------"
+
+    if connected; then
+      msg "CONNECTED!\n"
+      timeout_enabled=1
+    else
+      if [[ $timeout_enabled -eq 0 ]]; then
+        msg "WAITING FOR SSH CONNECTION - Timeout in ~$(( timeout - COUNTER )) seconds\n"
+      else
+        msg "WAITING FOR SSH CONNECTION\n"
+      fi
+    fi
+
+    msg \
+      "Have this in the .ssh/config file of the relay server:" \
+      "\n\n\tHost reverse" \
+      "\n\t\tHostName localhost" \
+      "\n\t\tUser $user" \
+      "\n\t\tPort $port" \
+      "\n\t\tRequestTTY force" \
+      "\n\t\tRemoteCommand /bin/bash" \
+      "\n\t\tStrictHostKeyChecking no" \
+      "\n\t\tUserKnownHostsFile /dev/null" \
+      "\n\t\tLogLevel ERROR" \
+      "\n\nThen run:" \
+      "\n\n\tssh reverse" \
+      "\n\n\nTo stop this, from a bash shell:" \
+      "\n\n\tgh-continue" \
+      "\n\nor:" \
+      "\n\n\ttouch $continue_file"
+
+  fi
+
+  sleep $step
+
+  COUNTER=$(( COUNTER+step ))
+  if [[ $COUNTER -ge $timeout ]] && ! connected && [[ $timeout_enabled -eq 0 ]]; then
+    err "\nTIMEOUT ERROR! NO CONNECTION DETECTED FOR $timeout SECONDS."
+  fi
+
+done
