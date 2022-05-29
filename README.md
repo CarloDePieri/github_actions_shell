@@ -3,7 +3,7 @@ a public server.
 
 This can be handy to inspect and debug a failing workflow job.
 
-## SETUP
+## Setup
 
 A public host that acts as relay is needed, with `sshd` installed.
 
@@ -18,6 +18,9 @@ fill in the values:
 - `SSH_RELAY_USER`: The user on the relay host;
 - `SSH_RELAY_KEY`: A relay host public key (the first from `ssh-keyscan $SSH_RELAY_HOST`).
 
+Hint: this completed value can be stored to quickly reuse this setup with
+different projects.
+
 Finally, add to the workflow file:
 
 ```yaml
@@ -25,6 +28,8 @@ Finally, add to the workflow file:
   uses: CarloDePieri/github_actions_shell@v1
   with:
     rssh_env: ${{ secrets.RSSH_ENV }}
+    # optionally:
+    rssh_relay_port: 10022
 ```
 
 ### Alternative setup
@@ -50,45 +55,59 @@ Then, in the action file:
     rssh_relay_host: ${{ secrets.RSSH_RELAY_HOST }}
     rssh_relay_user: ${{ secrets.RSSH_RELAY_USER }}
     rssh_relay_key: ${{ secrets.RSSH_RELAY_KEY }}
+    # optionally:
+    rssh_relay_port: 10022
 ```
 
-## USAGE
+## Usage
 
 Launch the github action, manually or with the ci. The job will enter a loop, suggesting
 to add something like this to `.ssh/config` on the relay server:
 
 ```config
 Host reverse
-    HostName localhost
-    StrictHostKeyChecking no
-    Port 10022
-    RequestTTY force
-    RemoteCommand /bin/bash
+        HostName localhost
+        User runner
+        Port 10022
+        RequestTTY force
+        RemoteCommand /bin/bash
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+        LogLevel ERROR
 ```
 
 It will also print the command to launch on the relay server to connect, something
 like:
 
 ```shell
-ssh runner@reverse
+ssh reverse
 ```
 
 To disconnect and resume the execution of the action, in the reverse shell run:
 
 ```shell
-rssh-stop
+gh-continue
 # or:
 touch /tmp/continue
 ```
 
-## TESTING
+## Testing the script locally
 
-Follow the main setup instruction until compiling the `.env` file. Then run:
+Clone this repo with `git clone https://github.com/CarloDePieri/github_actions_shell.git`.
+
+Enter the test folder with `cd test`.
+
+Create `env.full` and `env.split` starting from [env.full.template](test/env.full.template)
+and [env.split.template](test/env.split.template) respectively (pay
+attention to delimeters and escaped charatecters).
+
+Then run:
 
 ```shell
-docker compose up
+make test-full
+# or:
+make test-split
 ```
 
-Finally connect to the launched container from the relay server.
+This will allow to login in the container from the relay server and test the script.
 
-The docker container is based on the image from [act](https://github.com/nektos/act).

@@ -1,3 +1,2 @@
-.env
-/env.full
-/env.split
+test/env.full
+test/env.split

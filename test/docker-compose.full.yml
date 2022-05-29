@@ -2,9 +2,10 @@
 version: "3.9"
 
 services:
-  test:
+  full:
     image: catthehacker/ubuntu:act-20.04
     volumes:
-      - ./:/src
+      - ../:/src
+      - ./entrypoint.sh:/entrypoint.sh
     env_file: env.full
-    entrypoint: /src/connect
+    entrypoint: /entrypoint.sh
