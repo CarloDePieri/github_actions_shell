@@ -21,10 +21,8 @@ port="${RSSH_RELAY_PORT:-10022}"
 # Settings
 #
 
-timeout=120
-print_every_n_seconds=30
-timeout=15
-print_every_n_seconds=5
+timeout=${timeout:-120}
+print_every_n_seconds=${print_every_n_seconds:-30}
 step=5
 continue_file=/tmp/continue
 
