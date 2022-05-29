@@ -1,6 +1,9 @@
 #!/bin/bash
-
+#
 # Parse the full $RSSH_ENV variable, if not empty
+
+set -e
+
 if [[ "$RSSH_ENV" != "" ]];  then
   tmpfile=$(mktemp /tmp/rssh.XXXXXX)
   echo "$RSSH_ENV" > $tmpfile
@@ -14,9 +17,25 @@ ssh_relay_user="$RSSH_RELAY_USER"
 ssh_relay_key="$RSSH_RELAY_KEY"
 port="${RSSH_RELAY_PORT:-10022}"
 
-user=$(whoami)
+#
+# Settings
+#
+
+timeout=120
+print_every_n_seconds=30
+timeout=15
+print_every_n_seconds=5
+step=5
 continue_file=/tmp/continue
+
+timeout_enabled=0
+COUNTER=0
+user=$(whoami)
 socket=/tmp/rssh.socket
+
+#
+# Functions
+#
 
 setup_ssh() {
   mkdir -p ~/.ssh
@@ -36,28 +55,6 @@ END
   chmod 600 ~/.ssh/authorized_keys
 
   echo "alias gh-continue='touch $continue_file; exit'" >> ~/.bashrc
-}
-
-ssh_is_not_running(){ 
-  set +e
-  out=$(/etc/init.d/ssh status | grep "is not running")
-  result=$?
-  set -e
-  return $?
-}
-
-start_sshd() {
-  # ensure the ssh server is running
-  if [[ "$(whoami)" == "root" ]]; then
-    if [[ $(command -v /etc/init.d/ssh) != "" ]] && ssh_is_not_running; then
-      msg "\nEnsure the ssh server is running..."
-      /etc/init.d/ssh start
-    else
-      msg "\nCould not find sshd controls, hoping that sshd is up and running..."
-    fi
-  else
-    msg "\nI'm not root, hoping that sshd is up and running..."
-  fi
 }
 
 start_ssh_reverse_connection() {
@@ -85,19 +82,9 @@ err() {
 }
 
 setup_ssh
-start_sshd
 start_ssh_reverse_connection
 
 # Start the main loop
-COUNTER=0
-
-timeout=120
-print_every_n_seconds=30
-# timeout=15
-# print_every_n_seconds=5
-timeout_enabled=0
-step=5
-
 while true; do 
 
   if [ -f "$continue_file" ]; then

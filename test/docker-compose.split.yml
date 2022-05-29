@@ -5,6 +5,7 @@ services:
   test:
     image: catthehacker/ubuntu:act-20.04
     volumes:
-      - ./:/src
+      - ../:/src
+      - ./entrypoint.sh:/entrypoint.sh
     env_file: env.split
-    entrypoint: /src/connect
+    entrypoint: /entrypoint.sh

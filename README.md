@@ -3,7 +3,7 @@ a public server.
 
 This can be handy to inspect and debug a failing workflow job.
 
-## SETUP
+## Setup
 
 A public host that acts as relay is needed, with `sshd` installed.
 
@@ -59,7 +59,7 @@ Then, in the action file:
     rssh_relay_port: 10022
 ```
 
-## USAGE
+## Usage
 
 Launch the github action, manually or with the ci. The job will enter a loop, suggesting
 to add something like this to `.ssh/config` on the relay server:
@@ -90,3 +90,24 @@ gh-continue
 # or:
 touch /tmp/continue
 ```
+
+## Testing the script locally
+
+Clone this repo with `git clone https://github.com/CarloDePieri/github_actions_shell.git`.
+
+Enter the test folder with `cd test`.
+
+Create `env.full` and `env.split` starting from [env.full.template](test/env.full.template)
+and [env.split.template](test/env.split.template) respectively (pay
+attention to delimeters and escaped charatecters).
+
+Then run:
+
+```shell
+make test-full
+# or:
+make test-split
+```
+
+This will allow to login in the container from the relay server and test the script.
+
