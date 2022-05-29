@@ -1,73 +1,55 @@
-A script to create a reverse ssh connection between a github action and a public
-server.
+A github action to create a reverse ssh connection between a github workflow and
+a public server.
 
-This can be handy to inspect and debug a failing action.
+This can be handy to inspect and debug a failing workflow job.
 
 ## SETUP
 
 A public host that acts as relay is needed, with `sshd` installed.
 
-Create a custom ssh key pair with `ssh-keygen github_actions`. Add the resulting
+Generate a custom ssh key pair with `ssh-keygen github_actions`. Add the resulting
 public key to the `authorized_keys` on the relay server.
 
-Checkout this repo with `git clone https://github.com/CarloDePieri/github_actions_shell.git`.
-
-Now create a file `.env` using as template the [env.template](./env.template):
+Create a action secret called `RSSH_ENV` and paste the value of [env.template](./env.template);
+fill in the values:
 
 - `SSH_KEY`: The `github_action` private key;
 - `SSH_RELAY_HOST`: The relay host PUBLIC ip / domain name;
 - `SSH_RELAY_USER`: The user on the relay host;
 - `SSH_RELAY_KEY`: A relay host public key (the first from `ssh-keyscan $SSH_RELAY_HOST`).
 
-Now launch `./compile.sh`:
-
-- if `xsel` is intalled, this will copy to the clipboard the compiled file;
-- otherwise, the compiled file will be printed.
-
-Paste it in the value of a github action secret called `RSSH_SCRIPT`.
-
-Finally, in the action file:
+Finally, add to the workflow file:
 
 ```yaml
 - name: Launch a reverse ssh connection.
-  run: |
-    cat >>~/run-reverse-ssh <<END
-    $RSSH_SCRIPT
-    END
-    chmod +x ~/run-reverse-ssh
-    ~/run-reverse-ssh
-  env:
-    RSSH_SCRIPT: ${{ secrets.RSSH_SCRIPT }}
+  uses: CarloDePieri/github_actions_shell@v1
+  with:
+    rssh_env: ${{ secrets.RSSH_ENV }}
 ```
 
 ### Alternative setup
 
-As before, create the ssh key pair and save the public key on the server.
+It's possible to split the env in multiple secrets. As before, create the ssh key
+pair and save the public key on the server.
 
 Create some github action secrets:
 
-- `RSSH_SCRIPT`: the content of [script.sh](./script.sh);
-- `SSH_KEY`: The `github_action` private key;
-- `SSH_RELAY_HOST`: The relay host PUBLIC ip / domain name;
-- `SSH_RELAY_USER`: The user on the relay host;
-- `SSH_RELAY_KEY`: A relay host public key (the first from `ssh-keyscan $SSH_RELAY_HOST`).
+- `RSSH_SSH_KEY`: The `github_action` private key;
+- `RSSH_RELAY_HOST`: The relay host PUBLIC ip / domain name;
+- `RSSH_RELAY_USER`: The user on the relay host;
+- `RSSH_RELAY_KEY`: A relay host public key (the first from `ssh-keyscan $SSH_RELAY_HOST`).
 
 Then, in the action file:
 
 ```yaml
 - name: Launch a reverse ssh connection.
-  run: |
-    cat >>~/run-reverse-ssh <<END
-    $RSSH_SCRIPT
-    END
-    chmod +x ~/run-reverse-ssh
-    ~/run-reverse-ssh
-  env:
-    RSSH_SCRIPT: ${{ secrets.RSSH_SCRIPT }}
-    SSH_KEY: ${{ secrets.SSH_KEY }}
-    SSH_RELAY_HOST: ${{ secrets.SSH_RELAY_HOST }}
-    SSH_RELAY_USER: ${{ secrets.SSH_RELAY_USER }}
-    SSH_RELAY_KEY: ${{ secrets.SSH_RELAY_KEY }}
+  uses: CarloDePieri/github_actions_shell@v1
+  with:
+    rssh_split_env: true
+    rssh_ssh_key: ${{ secrets.RSSH_SSH_KEY }}
+    rssh_relay_host: ${{ secrets.RSSH_RELAY_HOST }}
+    rssh_relay_user: ${{ secrets.RSSH_RELAY_USER }}
+    rssh_relay_key: ${{ secrets.RSSH_RELAY_KEY }}
 ```
 
 ## USAGE
@@ -80,6 +62,8 @@ Host reverse
     HostName localhost
     StrictHostKeyChecking no
     Port 10022
+    RequestTTY force
+    RemoteCommand /bin/bash
 ```
 
 It will also print the command to launch on the relay server to connect, something
@@ -92,6 +76,8 @@ ssh runner@reverse
 To disconnect and resume the execution of the action, in the reverse shell run:
 
 ```shell
+rssh-stop
+# or:
 touch /tmp/continue
 ```
 

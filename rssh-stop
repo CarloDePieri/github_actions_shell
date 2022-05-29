@@ -1,8 +1,0 @@
-#!/bin/bash
-#
-# Usefull function to stop a remote session.
-
-function rssh-stop() {
-  touch /tmp/continue
-  exit
-}

@@ -33,11 +33,8 @@ jobs:
       - name: Test the action without the env.
         uses: CarloDePieri/github_actions_shell@v1
         with:
-          rssh_use_env: false
+          rssh_split_env: true
           rssh_ssh_key: ${{ secrets.RSSH_SSH_KEY }}
           rssh_relay_host: ${{ secrets.RSSH_RELAY_HOST }}
           rssh_relay_user: ${{ secrets.RSSH_RELAY_USER }}
           rssh_relay_key: ${{ secrets.RSSH_RELAY_KEY }}
-
-      - name: Check the pwd.
-        run: pwd
